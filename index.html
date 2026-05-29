@@ -1,1 +1,2290 @@
-full index.html content trimmed for safety in this call - will use separate approach if needed
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TubeScope • Анализ YouTube-конкурентов</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --accent: #FF0033;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .glass {
+            background: rgba(255,255,255, 0.06);
+            backdrop-filter: blur(20px);
+        }
+
+        .section-header {
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: -.025em;
+        }
+
+        .stat-value {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .metric-card {
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                       box-shadow 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+
+        .nav-link {
+            transition: all 0.1s ease;
+        }
+        
+        .nav-link.active {
+            background-color: #27272a;
+            color: white;
+            border-radius: 8px;
+        }
+
+        .youtube-red {
+            color: #FF0033;
+        }
+
+        .video-card {
+            transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        
+        .video-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.15), 0 4px 6px -4px rgb(0 0 0 / 0.15);
+        }
+
+        .data-table th {
+            font-weight: 600;
+            color: #a1a1aa;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+
+        .data-table td {
+            font-size: 0.925rem;
+        }
+
+        .insight-box {
+            background: linear-gradient(145deg, #18181b, #27272a);
+        }
+
+        .chart-container {
+            position: relative;
+        }
+
+        .modern-shadow {
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2),
+                        0 4px 6px -4px rgb(0 0 0 / 0.2);
+        }
+
+        .pill {
+            font-size: 0.75rem;
+            padding: 1px 10px;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .section {
+            scroll-margin-top: 80px;
+        }
+
+        .loading-bar {
+            animation: loading 1.5s infinite ease-in-out;
+        }
+
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        .analysis-step {
+            transition: all 0.3s ease;
+        }
+
+        .metric-number {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "ss02";
+        }
+
+        .table-row {
+            transition: background-color 0.1s ease;
+        }
+        
+        .table-row:hover {
+            background-color: #27272a;
+        }
+
+        .nav-sidebar {
+            scrollbar-width: thin;
+            scrollbar-color: #3f3f46 #18181b;
+        }
+
+        .mini-stat {
+            font-size: 0.875rem;
+            line-height: 1;
+        }
+
+        .word-tag {
+            transition: all 0.1s ease;
+        }
+
+        .word-tag:hover {
+            transform: scale(1.05);
+            background-color: #3f3f46;
+        }
+
+        .yt-thumbnail {
+            aspect-ratio: 16 / 9;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        
+        .yt-thumbnail::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.4));
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .video-card:hover .yt-thumbnail::after {
+            opacity: 1;
+        }
+
+        .play-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 42px;
+            height: 42px;
+            background: rgba(255,0,51,0.95);
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 0 8px rgba(255,0,51,0.2);
+        }
+        
+        .video-card:hover .play-overlay {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.05);
+        }
+
+        .dashboard-bg {
+            background: 
+                radial-gradient(circle at 25% 15%, rgba(255,0,51,0.06) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(163,163,172,0.05) 0%, transparent 40%);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            letter-spacing: -.5px;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #71717a;
+        }
+
+        .fancy-number {
+            font-size: 2.25rem;
+            line-height: 1;
+            font-weight: 700;
+            font-family: 'Space Grotesk', system_ui, -apple-system, sans-serif;
+            letter-spacing: -0.04em;
+        }
+
+        .custom-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #3f3f46 transparent;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+    <!-- Top Navigation -->
+    <nav class="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/95 backdrop-blur-xl">
+        <div class="max-w-screen-2xl mx-auto">
+            <div class="px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-x-4">
+                    <!-- Logo -->
+                    <div class="flex items-center gap-x-3">
+                        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#FF0033] via-[#FF0033] to-[#c70029] flex items-center justify-center shadow-inner">
+                            <div class="relative">
+                                <i class="fa-solid fa-chart-line text-white text-3xl"></i>
+                                <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-white rounded-full flex items-center justify-center">
+                                    <i class="fa-brands fa-youtube text-[#FF0033] text-[10px]"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="font-display text-3xl font-semibold tracking-tighter">TubeScope</span>
+                            <span class="text-[10px] font-mono text-zinc-500 tracking-[3px] block -mt-1.5 ml-0.5">INTEL</span>
+                        </div>
+                    </div>
+                    
+                    <div class="hidden md:flex items-center gap-x-1.5 ml-3 px-3 py-1.5 bg-zinc-900 rounded-2xl border border-white/10">
+                        <div class="flex items-center gap-x-1.5">
+                            <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                            <span class="text-emerald-400 text-xs font-semibold tracking-wider">YouTube Data API v3</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-x-3">
+                    <!-- API Key Status -->
+                    <button onclick="showApiKeyModal()" 
+                            class="flex items-center gap-x-2 px-4 py-2 text-sm bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-2xl transition-colors">
+                        <i class="fa-solid fa-key text-amber-400"></i>
+                        <span class="text-xs font-medium text-zinc-400 hidden md:inline" id="api-key-status">API ключ настроен</span>
+                    </button>
+
+                    <!-- GitHub / Info -->
+                    <a href="https://github.com" target="_blank" 
+                       class="w-10 h-10 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-2xl border border-white/10 transition-all">
+                        <i class="fa-brands fa-github text-xl"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO / SEARCH SECTION -->
+    <div id="search-section" class="max-w-screen-2xl mx-auto px-8 pt-12 pb-10">
+        <div class="max-w-4xl mx-auto text-center">
+            <div class="inline-flex items-center gap-x-2 px-4 py-1 rounded-full bg-zinc-900 border border-white/10 mb-6">
+                <span class="text-xs font-semibold tracking-[1px] text-amber-400">ПРОФЕССИОНАЛЬНЫЙ ИНСТРУМЕНТ</span>
+            </div>
+            
+            <h1 class="font-display text-6xl md:text-7xl tracking-tighter font-semibold leading-[1.05]">
+                Анализируйте<br>стратегии конкурентов<br>
+                <span class="bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">на YouTube</span>
+            </h1>
+            
+            <p class="mt-5 text-xl text-zinc-400 max-w-lg mx-auto">
+                Получайте детальную аналитику каналов: частоту публикаций, 
+                лучшие видео, ключевые слова и сравнение конкурентов.
+            </p>
+
+            <!-- Search Box -->
+            <div class="mt-9 max-w-2xl mx-auto">
+                <div class="relative group">
+                    <div class="absolute -inset-1 bg-gradient-to-r from-[#FF0033]/20 via-transparent to-transparent rounded-3xl blur opacity-75 group-hover:opacity-100 transition"></div>
+                    
+                    <div class="relative flex items-center bg-zinc-900 border border-white/20 focus-within:border-[#FF0033]/60 transition-colors rounded-3xl p-2 shadow-2xl">
+                        <div class="flex-1 flex items-center px-6">
+                            <i class="fa-solid fa-search text-zinc-500 mr-4 text-xl"></i>
+                            <input id="channel-input" 
+                                   type="text" 
+                                   placeholder="Название канала, ссылка или @handle"
+                                   class="flex-1 bg-transparent text-lg placeholder:text-zinc-500 focus:outline-none py-3.5"
+                                   onkeypress="if (event.key === 'Enter') searchChannels()">
+                        </div>
+                        <button onclick="searchChannels()" 
+                                class="px-9 py-3.5 bg-white text-zinc-950 font-semibold text-sm tracking-wider rounded-2xl hover:bg-zinc-200 active:scale-[0.985] transition-all flex items-center gap-x-2">
+                            <span>АНАЛИЗИРОВАТЬ</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap gap-2 justify-center mt-4">
+                    <div onclick="quickAnalyze('@mkbhd')" class="cursor-pointer px-4 py-1 text-xs rounded-2xl border border-white/10 hover:border-white/30 bg-zinc-900/70 hover:bg-zinc-900 transition-colors flex items-center gap-x-2">
+                        <i class="fa-brands fa-youtube text-red-500"></i>
+                        <span class="font-medium">MKBHD</span>
+                    </div>
+                    <div onclick="quickAnalyze('MrBeast')" class="cursor-pointer px-4 py-1 text-xs rounded-2xl border border-white/10 hover:border-white/30 bg-zinc-900/70 hover:bg-zinc-900 transition-colors flex items-center gap-x-2">
+                        <span class="font-medium">MrBeast</span>
+                    </div>
+                    <div onclick="quickAnalyze('TED')" class="cursor-pointer px-4 py-1 text-xs rounded-2xl border border-white/10 hover:border-white/30 bg-zinc-900/70 hover:bg-zinc-900 transition-colors flex items-center gap-x-2">
+                        <span class="font-medium">TED</span>
+                    </div>
+                    <div onclick="quickAnalyze('Linus Tech Tips')" class="cursor-pointer px-4 py-1 text-xs rounded-2xl border border-white/10 hover:border-white/30 bg-zinc-900/70 hover:bg-zinc-900 transition-colors flex items-center gap-x-2">
+                        <span class="font-medium">Linus Tech Tips</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESULTS AREA -->
+    <div id="results-section" class="hidden max-w-screen-2xl mx-auto px-8 pb-24">
+        
+        <!-- Channel Header -->
+        <div class="mb-8">
+            <div class="bg-zinc-900 border border-white/10 rounded-3xl p-1 modern-shadow overflow-hidden">
+                <!-- Banner -->
+                <div id="channel-banner" 
+                     class="h-36 md:h-44 rounded-[20px] bg-cover bg-center relative"
+                     style="background-image: linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.65)), url('https://picsum.photos/id/1015/2000/800')">
+                    
+                    <div class="absolute bottom-0 left-0 right-0 p-6 md:p-8 flex items-end justify-between">
+                        <div class="flex items-end gap-x-5">
+                            <!-- Avatar -->
+                            <div id="channel-avatar" 
+                                 class="w-20 h-20 md:w-24 md:h-24 rounded-2xl border-[5px] border-zinc-900 shadow-2xl bg-zinc-800 bg-cover bg-center ring-1 ring-white/20 flex-shrink-0">
+                            </div>
+                            
+                            <div class="pb-1">
+                                <div class="flex items-center gap-x-3">
+                                    <h2 id="channel-title" class="font-display text-4xl font-semibold tracking-tighter"></h2>
+                                    <div id="channel-verified" class="hidden items-center justify-center w-6 h-6 bg-white/95 rounded-full">
+                                        <i class="fa-solid fa-check text-zinc-950 text-sm"></i>
+                                    </div>
+                                </div>
+                                <div id="channel-handle" class="font-mono text-sm text-zinc-400"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="hidden md:flex items-center gap-x-2 pb-2">
+                            <button onclick="addCurrentToComparison()" 
+                                    class="px-5 py-2.5 rounded-2xl bg-white/95 hover:bg-white text-sm font-semibold text-zinc-900 flex items-center gap-x-2 transition-all active:scale-[0.985]">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Добавить к сравнению</span>
+                            </button>
+                            
+                            <button onclick="refreshAnalysis()" 
+                                    class="px-5 py-2.5 rounded-2xl border border-white/20 hover:bg-white/5 text-sm font-medium flex items-center gap-x-2 transition-colors">
+                                <i class="fa-solid fa-sync"></i>
+                                <span>Обновить</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-3">
+                <div class="bg-zinc-900 border border-white/10 rounded-2xl p-4 metric-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="stat-label">Подписчики</div>
+                            <div id="stat-subs" class="fancy-number font-semibold text-white mt-1.5"></div>
+                        </div>
+                        <i class="fa-solid fa-users text-2xl text-white/30"></i>
+                    </div>
+                </div>
+                <div class="bg-zinc-900 border border-white/10 rounded-2xl p-4 metric-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="stat-label">Всего видео</div>
+                            <div id="stat-videos" class="fancy-number font-semibold text-white mt-1.5"></div>
+                        </div>
+                        <i class="fa-solid fa-video text-2xl text-white/30"></i>
+                    </div>
+                </div>
+                <div class="bg-zinc-900 border border-white/10 rounded-2xl p-4 metric-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="stat-label">Общие просмотры</div>
+                            <div id="stat-views" class="fancy-number font-semibold text-white mt-1.5"></div>
+                        </div>
+                        <i class="fa-solid fa-eye text-2xl text-white/30"></i>
+                    </div>
+                </div>
+                <div class="bg-zinc-900 border border-white/10 rounded-2xl p-4 metric-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="stat-label">Дата создания</div>
+                            <div id="stat-joined" class="text-xl font-semibold text-white mt-1.5"></div>
+                            <div id="stat-joined-relative" class="text-xs text-emerald-400"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-zinc-900 border border-white/10 rounded-2xl p-4 metric-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="stat-label">Страна</div>
+                            <div id="stat-country" class="text-xl font-semibold text-white mt-1.5"></div>
+                        </div>
+                        <i class="fa-solid fa-globe text-2xl text-white/30"></i>
+                    </div>
+                </div>
+                <div class="bg-zinc-900 border border-white/10 rounded-2xl p-4 metric-card flex items-center justify-center">
+                    <a id="channel-link" target="_blank" 
+                       class="w-full flex items-center justify-center gap-x-2 text-sm font-semibold py-2 rounded-2xl border border-white/15 hover:bg-zinc-800 active:bg-zinc-950 transition">
+                        <span>Открыть на YouTube</span> 
+                        <i class="fa-solid fa-external-link-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Navigation -->
+        <div class="flex flex-wrap gap-1.5 mb-6 border-b border-white/10 pb-1 sticky top-16 bg-zinc-950/95 backdrop-blur-xl z-40 py-2 -mx-1 px-1">
+            <button onclick="scrollToSection('overview')" class="nav-link px-5 py-2 text-sm font-semibold flex items-center gap-x-2 hover:bg-zinc-900 rounded-2xl" data-section="overview">
+                <i class="fa-solid fa-home w-4"></i> <span>Обзор</span>
+            </button>
+            <button onclick="scrollToSection('schedule')" class="nav-link px-5 py-2 text-sm font-semibold flex items-center gap-x-2 hover:bg-zinc-900 rounded-2xl" data-section="schedule">
+                <i class="fa-solid fa-calendar-alt w-4"></i> <span>График публикаций</span>
+            </button>
+            <button onclick="scrollToSection('videos')" class="nav-link px-5 py-2 text-sm font-semibold flex items-center gap-x-2 hover:bg-zinc-900 rounded-2xl" data-section="videos">
+                <i class="fa-solid fa-list w-4"></i> <span>Видео</span>
+            </button>
+            <button onclick="scrollToSection('playlists')" class="nav-link px-5 py-2 text-sm font-semibold flex items-center gap-x-2 hover:bg-zinc-900 rounded-2xl" data-section="playlists">
+                <i class="fa-solid fa-folder-open w-4"></i> <span>Плейлисты</span>
+            </button>
+            <button onclick="scrollToSection('top-videos')" class="nav-link px-5 py-2 text-sm font-semibold flex items-center gap-x-2 hover:bg-zinc-900 rounded-2xl" data-section="top-videos">
+                <i class="fa-solid fa-trophy w-4"></i> <span>Топ видео</span>
+            </button>
+            <button onclick="scrollToSection('keywords')" class="nav-link px-5 py-2 text-sm font-semibold flex items-center gap-x-2 hover:bg-zinc-900 rounded-2xl" data-section="keywords">
+                <i class="fa-solid fa-tags w-4"></i> <span>Ключевые слова</span>
+            </button>
+            <button onclick="scrollToSection('compare')" class="nav-link px-5 py-2 text-sm font-semibold flex items-center gap-x-2 hover:bg-zinc-900 rounded-2xl" data-section="compare">
+                <i class="fa-solid fa-balance-scale w-4"></i> <span>Сравнение</span>
+            </button>
+        </div>
+
+        <!-- OVERVIEW -->
+        <div id="overview" class="section mb-10">
+            <div class="flex items-end justify-between mb-4 px-1">
+                <div>
+                    <span class="section-header">Обзор канала</span>
+                </div>
+                <div id="channel-description-short" class="hidden md:block max-w-md text-sm text-zinc-400 text-right"></div>
+            </div>
+            
+            <div class="grid md:grid-cols-12 gap-4">
+                <!-- Description -->
+                <div class="md:col-span-7 bg-zinc-900 border border-white/10 rounded-3xl p-7">
+                    <div class="uppercase text-xs tracking-[1px] font-semibold text-zinc-500 mb-3">Описание канала</div>
+                    <div id="channel-description" class="text-zinc-300 leading-relaxed text-[15.2px]"></div>
+                </div>
+                
+                <!-- Key Insights -->
+                <div class="md:col-span-5 bg-zinc-900 border border-white/10 rounded-3xl p-7">
+                    <div class="uppercase text-xs tracking-[1px] font-semibold text-zinc-500 mb-4">Ключевые выводы</div>
+                    <div id="quick-insights" class="space-y-3 text-sm"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PUBLISHING SCHEDULE -->
+        <div id="schedule" class="section mb-10">
+            <div class="flex items-center justify-between mb-4 px-1">
+                <span class="section-header">График публикаций</span>
+                <div class="text-xs px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-zinc-400 flex items-center gap-x-2">
+                    <i class="fa-solid fa-info-circle"></i>
+                    <span>На основе последних 150 видео</span>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-12 gap-4">
+                <!-- Insights Text -->
+                <div class="lg:col-span-4 bg-zinc-900 border border-white/10 rounded-3xl p-6">
+                    <div class="uppercase tracking-widest text-xs font-bold mb-4 text-amber-400">АНАЛИЗ РИТМА</div>
+                    
+                    <div id="schedule-insight" class="text-lg leading-tight font-medium text-white"></div>
+                    
+                    <div class="mt-7 pt-6 border-t border-white/10 grid grid-cols-2 gap-y-5 text-sm">
+                        <div>
+                            <div class="text-zinc-400">Средняя частота</div>
+                            <div id="avg-per-week" class="font-semibold text-2xl text-white mt-0.5"></div>
+                            <div class="text-emerald-400 text-xs">видео в неделю</div>
+                        </div>
+                        <div>
+                            <div class="text-zinc-400">Регулярность</div>
+                            <div id="regularity-score" class="font-semibold text-2xl text-white mt-0.5"></div>
+                            <div class="text-xs text-zinc-400">из 100</div>
+                        </div>
+                        <div>
+                            <div class="text-zinc-400">Лучший день</div>
+                            <div id="best-day" class="font-semibold text-xl mt-0.5"></div>
+                        </div>
+                        <div>
+                            <div class="text-zinc-400">Лучшее время</div>
+                            <div id="best-hour" class="font-semibold text-xl mt-0.5"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekday Chart -->
+                <div class="lg:col-span-5 bg-zinc-900 border border-white/10 rounded-3xl p-6">
+                    <div class="flex justify-between mb-3 px-1">
+                        <div class="text-xs uppercase font-bold tracking-widest text-zinc-400">Дни недели</div>
+                    </div>
+                    <div class="h-[190px]">
+                        <canvas id="weekday-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Time of Day -->
+                <div class="lg:col-span-3 bg-zinc-900 border border-white/10 rounded-3xl p-6">
+                    <div class="text-xs uppercase font-bold tracking-widest text-zinc-400 mb-3 px-1">Время суток</div>
+                    <div class="h-[190px]">
+                        <canvas id="hourly-chart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Calendar / Recent Activity -->
+                <div class="lg:col-span-12 bg-zinc-900 border border-white/10 rounded-3xl p-6">
+                    <div class="flex justify-between mb-3 px-1">
+                        <div>
+                            <span class="text-xs uppercase font-bold tracking-widest text-zinc-400">Календарь активности</span>
+                        </div>
+                    </div>
+                    <div id="activity-calendar" class="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-12 gap-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIDEOS TABLE -->
+        <div id="videos" class="section mb-10">
+            <div class="flex items-center justify-between mb-4 px-1">
+                <span class="section-header">Все видео <span id="videos-count" class="text-zinc-400 font-normal text-lg"></span></span>
+                
+                <div class="flex items-center gap-x-2">
+                    <div class="relative">
+                        <input id="video-search" type="text" placeholder="Поиск по названию..." 
+                               onkeyup="filterVideosTable()"
+                               class="bg-zinc-900 border border-white/10 pl-9 text-sm py-2 w-64 rounded-2xl placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600">
+                        <i class="fa-solid fa-search absolute left-3.5 top-2.5 text-zinc-500"></i>
+                    </div>
+                    
+                    <select id="video-sort" onchange="sortVideosTable()" 
+                            class="bg-zinc-900 border border-white/10 text-sm py-2 px-3 rounded-2xl focus:outline-none">
+                        <option value="date-desc">Новые сначала</option>
+                        <option value="date-asc">Старые сначала</option>
+                        <option value="views-desc">По просмотрам ↓</option>
+                        <option value="likes-desc">По лайкам ↓</option>
+                        <option value="comments-desc">По комментариям ↓</option>
+                        <option value="engagement-desc">По вовлеченности ↓</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden">
+                <div class="max-h-[520px] overflow-auto custom-scroll">
+                    <table class="w-full data-table">
+                        <thead class="bg-zinc-950 sticky top-0 z-10">
+                            <tr>
+                                <th class="text-left px-6 py-4 w-7/12">Видео</th>
+                                <th class="text-right px-3 py-4">Дата</th>
+                                <th class="text-right px-3 py-4">Просмотры</th>
+                                <th class="text-right px-3 py-4">Лайки</th>
+                                <th class="text-right px-3 py-4">Комм.</th>
+                                <th class="text-right px-4 py-4">Вовлеч.</th>
+                                <th class="text-center px-4 py-4 w-12"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="videos-tbody" class="divide-y divide-white/5"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="flex justify-end mt-2 px-1">
+                <div onclick="exportCurrentVideos()" class="cursor-pointer text-xs flex items-center gap-x-1.5 text-zinc-400 hover:text-zinc-300">
+                    <i class="fa-solid fa-download"></i> 
+                    <span>Экспортировать эту таблицу</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLAYLISTS -->
+        <div id="playlists" class="section mb-10">
+            <div class="flex items-center justify-between mb-4 px-1">
+                <span class="section-header">Плейлисты канала</span>
+                <span id="playlists-count" class="text-sm text-zinc-400"></span>
+            </div>
+            
+            <div id="playlists-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+        </div>
+
+        <!-- TOP VIDEOS -->
+        <div id="top-videos" class="section mb-10">
+            <div class="flex items-center justify-between mb-4 px-1">
+                <span class="section-header">Лучшие видео</span>
+                
+                <div class="flex items-center gap-1 bg-zinc-900 border border-white/10 rounded-2xl p-1 text-sm">
+                    <button onclick="showTopVideos('views')" class="top-filter-btn active px-4 py-1 rounded-[14px]" data-filter="views">Просмотры</button>
+                    <button onclick="showTopVideos('engagement')" class="top-filter-btn px-4 py-1 rounded-[14px]" data-filter="engagement">Вовлеченность</button>
+                    <button onclick="showTopVideos('likes')" class="top-filter-btn px-4 py-1 rounded-[14px]" data-filter="likes">Лайки</button>
+                </div>
+            </div>
+            
+            <div id="top-videos-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4"></div>
+        </div>
+
+        <!-- KEYWORDS & TAGS -->
+        <div id="keywords" class="section mb-10">
+            <span class="section-header mb-4 block px-1">Контент-анализ: ключевые слова и теги</span>
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <!-- Title Words -->
+                <div class="bg-zinc-900 border border-white/10 rounded-3xl p-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-heading text-amber-400"></i>
+                        <span class="font-semibold">Популярные слова в заголовках</span>
+                    </div>
+                    <div id="title-words" class="flex flex-wrap gap-2 min-h-[120px]"></div>
+                    <div class="mt-4 pt-4 border-t border-white/10 text-xs text-zinc-400">
+                        Средняя длина заголовка: <span id="avg-title-length" class="font-semibold text-white"></span> символов
+                    </div>
+                </div>
+                
+                <!-- Tags -->
+                <div class="bg-zinc-900 border border-white/10 rounded-3xl p-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-tags text-violet-400"></i>
+                        <span class="font-semibold">Самые используемые теги</span>
+                    </div>
+                    <div id="popular-tags" class="flex flex-wrap gap-2 min-h-[120px]"></div>
+                    <div class="mt-4 pt-4 border-t border-white/10 grid grid-cols-2 gap-x-4 text-xs">
+                        <div>Видео с таймкодами: <span id="timestamp-percent" class="font-semibold text-white"></span></div>
+                        <div>Видео со ссылками: <span id="links-percent" class="font-semibold text-white"></span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COMPARISON -->
+        <div id="compare" class="section mb-10">
+            <div class="flex items-center justify-between mb-4 px-1">
+                <span class="section-header">Сравнение каналов</span>
+                <button onclick="showAddChannelModal()" 
+                        class="flex items-center px-5 py-2 text-sm font-semibold bg-white/95 text-zinc-950 rounded-2xl gap-x-2 hover:bg-white transition active:scale-95">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Добавить канал</span>
+                </button>
+            </div>
+
+            <div id="comparison-empty" class="bg-zinc-900 border border-dashed border-white/20 rounded-3xl py-9 px-8 text-center">
+                <i class="fa-solid fa-balance-scale text-4xl text-white/30 mb-3"></i>
+                <p class="font-medium">Добавьте 2 и более канала для сравнения</p>
+                <p class="text-sm text-zinc-400 mt-1">Сравнивайте подписчиков, частоту публикаций и эффективность</p>
+            </div>
+
+            <div id="comparison-content" class="hidden">
+                <div class="bg-zinc-900 border border-white/10 rounded-3xl p-6">
+                    <!-- Comparison Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[700px]">
+                            <thead>
+                                <tr class="border-b border-white/10">
+                                    <th class="text-left py-4 font-semibold text-sm text-zinc-400">Метрика</th>
+                                    <th id="compare-header-1" class="px-4 text-right font-semibold"></th>
+                                    <th id="compare-header-2" class="px-4 text-right font-semibold"></th>
+                                    <th id="compare-header-3" class="px-4 text-right font-semibold"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="comparison-tbody" class="text-sm divide-y divide-white/5"></tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Visual comparison bars -->
+                    <div class="mt-8">
+                        <div class="uppercase text-xs font-bold text-zinc-400 mb-3 tracking-wider px-1">ВИЗУАЛЬНОЕ СРАВНЕНИЕ</div>
+                        <div id="compare-visuals" class="grid md:grid-cols-2 gap-x-8 gap-y-7"></div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-3">
+                    <button onclick="clearComparison()" class="text-xs text-red-400 hover:text-red-500 flex items-center gap-x-1">
+                        <i class="fa-solid fa-trash"></i> <span>Очистить сравнение</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXPORT -->
+        <div class="section mb-3">
+            <span class="section-header mb-4 block px-1">Экспорт данных</span>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button onclick="exportCSV()" 
+                        class="group flex items-center gap-x-4 bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 transition p-5 rounded-3xl text-left">
+                    <div class="w-12 h-12 flex items-center justify-center bg-emerald-500/10 text-emerald-400 rounded-2xl group-hover:scale-105 transition">
+                        <i class="fa-solid fa-file-csv text-3xl"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold">CSV</div>
+                        <div class="text-xs text-zinc-400">Таблица видео</div>
+                    </div>
+                </button>
+                
+                <button onclick="exportExcel()" 
+                        class="group flex items-center gap-x-4 bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 transition p-5 rounded-3xl text-left">
+                    <div class="w-12 h-12 flex items-center justify-center bg-emerald-500/10 text-emerald-400 rounded-2xl group-hover:scale-105 transition">
+                        <i class="fa-solid fa-file-excel text-3xl"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold">Excel (XLSX)</div>
+                        <div class="text-xs text-zinc-400">Полный отчёт</div>
+                    </div>
+                </button>
+                
+                <button onclick="exportPDF()" 
+                        class="group flex items-center gap-x-4 bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 transition p-5 rounded-3xl text-left">
+                    <div class="w-12 h-12 flex items-center justify-center bg-red-500/10 text-red-400 rounded-2xl group-hover:scale-105 transition">
+                        <i class="fa-solid fa-file-pdf text-3xl"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold">PDF отчёт</div>
+                        <div class="text-xs text-zinc-400">Красивый документ</div>
+                    </div>
+                </button>
+                
+                <button onclick="exportJSON()" 
+                        class="group flex items-center gap-x-4 bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 transition p-5 rounded-3xl text-left">
+                    <div class="w-12 h-12 flex items-center justify-center bg-violet-500/10 text-violet-400 rounded-2xl group-hover:scale-105 transition">
+                        <i class="fa-solid fa-file-code text-3xl"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold">JSON</div>
+                        <div class="text-xs text-zinc-400">Все данные</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Action -->
+    <div id="floating-actions" class="hidden fixed bottom-8 right-8 flex flex-col gap-y-2 z-40">
+        <button onclick="scrollToSection('compare')" 
+                class="shadow-xl flex items-center gap-x-2 px-6 py-3.5 rounded-2xl bg-white text-zinc-950 font-semibold text-sm">
+            <i class="fa-solid fa-balance-scale"></i>
+            <span>Сравнить с другими</span>
+        </button>
+    </div>
+
+    <!-- Modals -->
+    
+    <!-- Channel Selection Modal -->
+    <div id="channel-select-modal" onclick="if (event.target.id === 'channel-select-modal') hideChannelModal()" class="hidden fixed inset-0 bg-black/70 backdrop-blur z-[60] flex items-center justify-center p-6">
+        <div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-white/20 max-w-md w-full rounded-3xl overflow-hidden modern-shadow">
+            <div class="px-6 pt-6 pb-4">
+                <div class="flex justify-between items-center">
+                    <div class="font-semibold text-xl">Выберите канал</div>
+                    <button onclick="hideChannelModal()" class="text-2xl leading-none text-white/40 hover:text-white">×</button>
+                </div>
+                <p class="text-sm text-zinc-400 mt-1">Найдено несколько результатов. Укажите нужный.</p>
+            </div>
+            <div id="channel-options" class="px-2 pb-3 max-h-[380px] overflow-auto custom-scroll"></div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="api-key-modal" onclick="if (event.target.id === 'api-key-modal') hideApiKeyModal()" class="hidden fixed inset-0 bg-black/70 backdrop-blur z-[60] flex items-center justify-center p-6">
+        <div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-white/20 w-full max-w-md rounded-3xl p-6 modern-shadow">
+            <div class="font-semibold text-xl mb-1">YouTube Data API ключ</div>
+            <p class="text-sm text-zinc-400 mb-4">Ключ используется для запросов к YouTube API. Никогда не публикуйте его публично.</p>
+            
+            <input id="api-key-input" type="text" class="w-full px-4 py-3 rounded-2xl border border-white/10 bg-zinc-950 font-mono text-sm" placeholder="AIzaSy...">
+            
+            <div class="mt-4 flex gap-3">
+                <button onclick="saveApiKey()" class="flex-1 py-3 rounded-2xl bg-white text-sm font-semibold text-zinc-950">Сохранить</button>
+                <button onclick="hideApiKeyModal()" class="flex-1 py-3 rounded-2xl border border-white/20 text-sm">Отмена</button>
+            </div>
+            
+            <div class="mt-4 text-[10px] text-center text-amber-400/80">
+                Получить ключ можно бесплатно в <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" class="underline">Google Cloud Console</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Channel to Compare Modal -->
+    <div id="add-compare-modal" onclick="if (event.target.id === 'add-compare-modal') hideAddChannelModal()" class="hidden fixed inset-0 bg-black/70 backdrop-blur z-[60] flex items-center justify-center p-6">
+        <div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-white/20 w-full max-w-lg rounded-3xl p-6 modern-shadow">
+            <div class="font-semibold text-xl mb-3">Добавить канал для сравнения</div>
+            
+            <div class="flex gap-2">
+                <input id="compare-search-input" type="text" placeholder="Название канала или ссылка" 
+                       class="flex-1 bg-zinc-950 border border-white/10 rounded-2xl px-4 py-3 text-sm">
+                <button onclick="searchAndAddToCompare()" class="px-6 bg-white text-sm font-semibold text-zinc-950 rounded-2xl">Найти</button>
+            </div>
+            
+            <div id="compare-search-results" class="mt-3 max-h-64 overflow-auto"></div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] flex flex-col gap-y-2 items-center"></div>
+
+    <script>
+        // ==================== CONFIG & STATE ====================
+        const DEFAULT_API_KEY = "AIzaSyDgdbLGSl0AULyu16VPMG0G4f-08DUqnig";
+        let API_KEY = localStorage.getItem('yt_api_key') || DEFAULT_API_KEY;
+        
+        let currentChannel = null;
+        let currentVideos = [];
+        let currentPlaylists = [];
+        let comparisonChannels = [];
+        
+        let weekdayChart = null;
+        let hourlyChart = null;
+
+        // Tailwind script
+        function initTailwind() {
+            document.documentElement.style.setProperty('--accent', '#FF0033');
+            
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            'display': ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif']
+                        }
+                    }
+                }
+            };
+        }
+
+        function updateApiKeyStatus() {
+            const statusEl = document.getElementById('api-key-status');
+            if (API_KEY === DEFAULT_API_KEY) {
+                statusEl.innerHTML = 'Демо ключ';
+                statusEl.className = 'text-xs font-medium text-amber-400 hidden md:inline';
+            } else {
+                statusEl.innerHTML = 'Свой ключ';
+                statusEl.className = 'text-xs font-medium text-emerald-400 hidden md:inline';
+            }
+        }
+
+        function showApiKeyModal() {
+            const modal = document.getElementById('api-key-modal');
+            const input = document.getElementById('api-key-input');
+            input.value = API_KEY;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function hideApiKeyModal() {
+            const modal = document.getElementById('api-key-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        function saveApiKey() {
+            const input = document.getElementById('api-key-input').value.trim();
+            if (!input) {
+                showToast('Введите ключ API', 'error');
+                return;
+            }
+            API_KEY = input;
+            localStorage.setItem('yt_api_key', input);
+            hideApiKeyModal();
+            updateApiKeyStatus();
+            showToast('API ключ сохранён', 'success');
+        }
+
+        // ==================== UTILITIES ====================
+        function formatNumber(num) {
+            if (!num && num !== 0) return '—';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 10000) return Math.round(num / 1000) + 'K';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toLocaleString('ru-RU');
+        }
+
+        function formatDuration(isoDuration) {
+            if (!isoDuration) return '';
+            const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+            if (!match) return '';
+            const hours = parseInt(match[1] || 0);
+            const minutes = parseInt(match[2] || 0);
+            const seconds = parseInt(match[3] || 0);
+            if (hours > 0) return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            let interval = seconds / 31536000;
+            if (interval > 1) return Math.floor(interval) + ' г.';
+            interval = seconds / 2592000;
+            if (interval > 1) return Math.floor(interval) + ' мес.';
+            interval = seconds / 86400;
+            if (interval > 1) return Math.floor(interval) + ' дн.';
+            interval = seconds / 3600;
+            if (interval > 1) return Math.floor(interval) + ' ч.';
+            interval = seconds / 60;
+            if (interval > 1) return Math.floor(interval) + ' мин.';
+            return 'только что';
+        }
+
+        function parseYouTubeDate(dateStr) {
+            return new Date(dateStr);
+        }
+
+        function getYouTubeThumbnail(videoId, quality = 'medium') {
+            return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+        }
+
+        function extractChannelIdFromInput(input) {
+            input = input.trim();
+            // Handle full URL
+            if (input.includes('youtube.com/channel/')) {
+                const match = input.match(/channel\/([a-zA-Z0-9_-]+)/);
+                return match ? match[1] : null;
+            }
+            if (input.includes('youtube.com/@')) {
+                return { handle: input.match(/@([a-zA-Z0-9_.-]+)/)[1] };
+            }
+            if (input.includes('youtube.com/c/')) {
+                return { custom: input.match(/c\/([a-zA-Z0-9_-]+)/)[1] };
+            }
+            if (input.startsWith('UC') && input.length > 20) {
+                return input; // direct channel id
+            }
+            return null; // treat as search query
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const colors = type === 'success' ? 'bg-emerald-500 text-white' : 
+                           type === 'error' ? 'bg-red-500 text-white' : 'bg-zinc-700 text-white';
+            
+            const toast = document.createElement('div');
+            toast.className = `px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-x-3 ${colors} text-sm font-medium min-w-[240px]`;
+            toast.innerHTML = `
+                <div class="flex-1">${message}</div>
+                <button class="opacity-75 hover:opacity-100" onclick="this.parentElement.remove()">×</button>
+            `;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentElement) toast.parentElement.removeChild(toast);
+            }, 4200);
+        }
+
+        // ==================== YOUTUBE API ====================
+        async function youtubeFetch(endpoint, params = {}) {
+            const url = new URL(`https://www.googleapis.com/youtube/v3/${endpoint}`);
+            url.searchParams.set('key', API_KEY);
+            
+            Object.entries(params).forEach(([k, v]) => {
+                if (v !== undefined && v !== null) url.searchParams.set(k, v);
+            });
+
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                if (response.status === 403) {
+                    throw new Error('Превышена квота API или недействительный ключ. Получите новый ключ в Google Cloud.');
+                }
+                throw new Error(error.error?.message || `Ошибка API: ${response.status}`);
+            }
+            
+            return response.json();
+        }
+
+        async function searchChannelsAPI(query) {
+            // Try to resolve handle or custom URL first
+            const directId = extractChannelIdFromInput(query);
+            
+            if (typeof directId === 'string' && directId.startsWith('UC')) {
+                // Direct channel ID
+                const data = await youtubeFetch('channels', {
+                    part: 'snippet,statistics,brandingSettings,contentDetails',
+                    id: directId
+                });
+                return data.items || [];
+            }
+            
+            if (directId && directId.handle) {
+                // Search by handle via search endpoint
+                const searchRes = await youtubeFetch('search', {
+                    part: 'snippet',
+                    q: query,
+                    type: 'channel',
+                    maxResults: 8
+                });
+                if (searchRes.items?.length) {
+                    const ids = searchRes.items.map(i => i.snippet.channelId).join(',');
+                    const channelsData = await youtubeFetch('channels', {
+                        part: 'snippet,statistics,brandingSettings,contentDetails',
+                        id: ids
+                    });
+                    return channelsData.items || [];
+                }
+            }
+
+            // General search
+            const searchRes = await youtubeFetch('search', {
+                part: 'snippet',
+                q: query,
+                type: 'channel',
+                maxResults: 10
+            });
+            
+            if (!searchRes.items || searchRes.items.length === 0) return [];
+            
+            const channelIds = searchRes.items.map(item => item.snippet.channelId).join(',');
+            const channelsData = await youtubeFetch('channels', {
+                part: 'snippet,statistics,brandingSettings,contentDetails',
+                id: channelIds
+            });
+            
+            return channelsData.items || [];
+        }
+
+        async function fetchChannelVideos(uploadsPlaylistId, maxVideos = 150) {
+            let videos = [];
+            let nextPageToken = '';
+            let fetched = 0;
+
+            while (fetched < maxVideos) {
+                const pageSize = Math.min(50, maxVideos - fetched);
+                const res = await youtubeFetch('playlistItems', {
+                    part: 'snippet,contentDetails',
+                    playlistId: uploadsPlaylistId,
+                    maxResults: pageSize,
+                    pageToken: nextPageToken || undefined
+                });
+
+                const videoIds = res.items.map(item => item.contentDetails.videoId);
+                
+                if (videoIds.length === 0) break;
+
+                // Fetch full video stats in batches of 50
+                const statsRes = await youtubeFetch('videos', {
+                    part: 'snippet,statistics,contentDetails',
+                    id: videoIds.join(',')
+                });
+
+                // Merge
+                const enriched = res.items.map(item => {
+                    const statsVideo = statsRes.items.find(v => v.id === item.contentDetails.videoId);
+                    return {
+                        id: item.contentDetails.videoId,
+                        title: item.snippet.title,
+                        publishedAt: item.snippet.publishedAt,
+                        thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
+                        description: item.snippet.description || '',
+                        channelId: item.snippet.channelId,
+                        ... (statsVideo ? {
+                            viewCount: parseInt(statsVideo.statistics?.viewCount || 0),
+                            likeCount: parseInt(statsVideo.statistics?.likeCount || 0),
+                            commentCount: parseInt(statsVideo.statistics?.commentCount || 0),
+                            duration: statsVideo.contentDetails?.duration,
+                            tags: statsVideo.snippet?.tags || [],
+                            categoryId: statsVideo.snippet?.categoryId,
+                            defaultLanguage: statsVideo.snippet?.defaultLanguage || statsVideo.snippet?.defaultAudioLanguage
+                        } : {})
+                    };
+                });
+
+                videos = videos.concat(enriched);
+                fetched += videoIds.length;
+                nextPageToken = res.nextPageToken;
+                
+                if (!nextPageToken) break;
+            }
+
+            return videos;
+        }
+
+        async function fetchPlaylists(channelId) {
+            const res = await youtubeFetch('playlists', {
+                part: 'snippet,contentDetails',
+                channelId: channelId,
+                maxResults: 50
+            });
+            return res.items || [];
+        }
+
+        async function fetchPlaylistVideos(playlistId, maxItems = 30) {
+            const res = await youtubeFetch('playlistItems', {
+                part: 'snippet,contentDetails',
+                playlistId,
+                maxResults: maxItems
+            });
+            return res.items || [];
+        }
+
+        // ==================== ANALYSIS ====================
+        function analyzePublishingSchedule(videos) {
+            if (!videos.length) return null;
+
+            const sorted = [...videos].sort((a, b) => new Date(a.publishedAt) - new Date(b.publishedAt));
+            
+            // Weekdays (0=Sun ... 6=Sat)
+            const weekdays = Array(7).fill(0);
+            const hours = Array(24).fill(0);
+            const monthly = {};
+            
+            let totalDaysSpan = 0;
+            if (sorted.length > 1) {
+                const first = new Date(sorted[0].publishedAt);
+                const last = new Date(sorted[sorted.length - 1].publishedAt);
+                totalDaysSpan = Math.max(1, Math.ceil((last - first) / (1000 * 3600 * 24)));
+            }
+
+            sorted.forEach(v => {
+                const d = new Date(v.publishedAt);
+                weekdays[d.getDay()]++;
+                hours[d.getHours()]++;
+                
+                const monthKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+                monthly[monthKey] = (monthly[monthKey] || 0) + 1;
+            });
+
+            const avgPerWeek = totalDaysSpan ? ((videos.length / totalDaysSpan) * 7).toFixed(1) : (videos.length / 4).toFixed(1);
+            
+            // Best day
+            const bestDayIdx = weekdays.indexOf(Math.max(...weekdays));
+            const dayNames = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
+            const bestDay = dayNames[bestDayIdx];
+            
+            // Best hour range
+            const bestHourIdx = hours.indexOf(Math.max(...hours));
+            const bestHourRange = `${bestHourIdx}:00–${bestHourIdx + 1}:00`;
+            
+            // Regularity score (lower variance of gaps = higher score)
+            let regularity = 65;
+            if (sorted.length > 3) {
+                const gaps = [];
+                for (let i = 1; i < sorted.length; i++) {
+                    const g1 = new Date(sorted[i-1].publishedAt);
+                    const g2 = new Date(sorted[i].publishedAt);
+                    gaps.push((g2 - g1) / (1000 * 3600 * 24));
+                }
+                const avgGap = gaps.reduce((a,b) => a+b, 0) / gaps.length;
+                const variance = gaps.reduce((sum, g) => sum + Math.pow(g - avgGap, 2), 0) / gaps.length;
+                const std = Math.sqrt(variance);
+                regularity = Math.max(25, Math.min(98, Math.round(92 - (std / avgGap) * 35)));
+            }
+
+            // Generate human insight
+            const topDays = [...weekdays].map((c, i) => ({c, i})).sort((a,b) => b.c - a.c).slice(0,2);
+            const insight = `Канал чаще всего публикует по ${dayNames[topDays[0].i].toLowerCase()} и ${dayNames[topDays[1].i].toLowerCase()}. Средняя частота — ${avgPerWeek} видео в неделю.`;
+
+            return {
+                weekdays, hours, monthly, avgPerWeek: parseFloat(avgPerWeek), 
+                bestDay, bestHour: bestHourRange, regularityScore: regularity,
+                insight, totalVideosAnalyzed: videos.length,
+                firstVideoDate: sorted[0]?.publishedAt,
+                lastVideoDate: sorted[sorted.length-1]?.publishedAt
+            };
+        }
+
+        function calculateEngagement(video) {
+            const views = video.viewCount || 1;
+            const likes = video.likeCount || 0;
+            const comments = video.commentCount || 0;
+            return ((likes + comments) / views * 100);
+        }
+
+        function analyzeTopVideos(videos) {
+            const withMetrics = videos.map(v => ({
+                ...v,
+                engagement: calculateEngagement(v)
+            }));
+
+            return {
+                byViews: [...withMetrics].sort((a,b) => (b.viewCount||0) - (a.viewCount||0)).slice(0, 8),
+                byLikes: [...withMetrics].sort((a,b) => (b.likeCount||0) - (a.likeCount||0)).slice(0, 8),
+                byEngagement: [...withMetrics].sort((a,b) => b.engagement - a.engagement).slice(0, 8)
+            };
+        }
+
+        function analyzeKeywords(videos) {
+            const stopWords = new Set([
+                'the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','up','about','into','over','after',
+                'the','и','в','на','с','по','для','от','к','из','за','о','об','как','что','это','то','не','да','нет','как','или',
+                'видео','видео','youtube','канал','новый','новая','новое','часть','серия','эпизод','обзор','review','2024','2025'
+            ]);
+
+            const titleWords = {};
+            let totalTitleLen = 0;
+            let hasTimestamps = 0;
+            let hasLinks = 0;
+            const tagFreq = {};
+
+            videos.forEach(v => {
+                totalTitleLen += (v.title || '').length;
+                
+                // Title words
+                const words = (v.title || '').toLowerCase()
+                    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+                    .split(/\s+/)
+                    .filter(w => w.length > 2 && !stopWords.has(w));
+                
+                words.forEach(w => titleWords[w] = (titleWords[w] || 0) + 1);
+                
+                // Tags
+                (v.tags || []).forEach(tag => {
+                    const t = tag.toLowerCase().trim();
+                    if (t.length > 1) tagFreq[t] = (tagFreq[t] || 0) + 1;
+                });
+
+                const desc = (v.description || '').toLowerCase();
+                if (/\d{1,2}:\d{2}/.test(desc)) hasTimestamps++;
+                if (/(https?:\/\/|www\.)/.test(desc)) hasLinks++;
+            });
+
+            const sortedTitleWords = Object.entries(titleWords)
+                .sort((a,b) => b[1] - a[1])
+                .slice(0, 22);
+
+            const sortedTags = Object.entries(tagFreq)
+                .sort((a,b) => b[1] - a[1])
+                .slice(0, 18);
+
+            return {
+                titleWords: sortedTitleWords,
+                tags: sortedTags,
+                avgTitleLength: Math.round(totalTitleLen / (videos.length || 1)),
+                timestampPercent: videos.length ? Math.round((hasTimestamps / videos.length) * 100) : 0,
+                linksPercent: videos.length ? Math.round((hasLinks / videos.length) * 100) : 0
+            };
+        }
+
+        function generateQuickInsights(channel, videos, schedule) {
+            const insights = [];
+            
+            const avgViews = videos.length ? Math.round(videos.reduce((s,v) => s + (v.viewCount||0), 0) / videos.length) : 0;
+            
+            insights.push({
+                icon: 'fa-chart-line',
+                text: `Средний охват видео: <span class="font-semibold text-white">${formatNumber(avgViews)}</span> просмотров`
+            });
+            
+            if (schedule) {
+                insights.push({
+                    icon: 'fa-clock',
+                    text: `Пик активности — <span class="font-semibold">${schedule.bestDay}</span> в ${schedule.bestHour}`
+                });
+            }
+            
+            if (videos.length > 5) {
+                const top = [...videos].sort((a,b) => (b.viewCount||0)-(a.viewCount||0))[0];
+                insights.push({
+                    icon: 'fa-trophy',
+                    text: `Самое популярное видео набрало <span class="font-semibold">${formatNumber(top.viewCount)}</span>`
+                });
+            }
+            
+            const engagementAvg = videos.length ? (videos.reduce((s,v) => s + calculateEngagement(v), 0) / videos.length).toFixed(2) : 0;
+            insights.push({
+                icon: 'fa-heart',
+                text: `Средняя вовлеченность: <span class="font-semibold">${engagementAvg}%</span>`
+            });
+
+            return insights;
+        }
+
+        // ==================== UI RENDER ====================
+        function renderChannelHeader(channel) {
+            document.getElementById('channel-title').textContent = channel.snippet.title;
+            document.getElementById('channel-handle').textContent = channel.snippet.customUrl || `@${channel.snippet.title.toLowerCase().replace(/\s+/g,'')}`;
+            
+            const avatar = document.getElementById('channel-avatar');
+            avatar.style.backgroundImage = `url(${channel.snippet.thumbnails?.high?.url || channel.snippet.thumbnails?.default?.url})`;
+            
+            // Banner
+            const banner = document.getElementById('channel-banner');
+            const bannerUrl = channel.brandingSettings?.image?.bannerExternalUrl;
+            if (bannerUrl) {
+                banner.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.6)), url('${bannerUrl}')`;
+            }
+
+            // Verified badge
+            const verified = document.getElementById('channel-verified');
+            verified.classList.toggle('hidden', !channel.snippet.title.toLowerCase().includes('verified') && channel.statistics.subscriberCount > 100000);
+            if (!verified.classList.contains('hidden')) verified.classList.add('flex');
+
+            // Stats
+            document.getElementById('stat-subs').textContent = formatNumber(parseInt(channel.statistics.subscriberCount || 0));
+            document.getElementById('stat-videos').textContent = formatNumber(parseInt(channel.statistics.videoCount || 0));
+            document.getElementById('stat-views').textContent = formatNumber(parseInt(channel.statistics.viewCount || 0));
+            
+            const joinedDate = new Date(channel.snippet.publishedAt);
+            document.getElementById('stat-joined').textContent = joinedDate.toLocaleDateString('ru-RU', {month:'short', year:'numeric'});
+            document.getElementById('stat-joined-relative').textContent = timeAgo(joinedDate) + ' на платформе';
+            
+            const country = channel.snippet.country || '—';
+            document.getElementById('stat-country').textContent = country;
+            
+            const link = document.getElementById('channel-link');
+            link.href = `https://youtube.com/channel/${channel.id}`;
+            
+            // Description
+            const desc = channel.snippet.description || 'Описание отсутствует';
+            document.getElementById('channel-description').textContent = desc;
+            document.getElementById('channel-description-short').textContent = desc.length > 130 ? desc.substring(0, 127) + '...' : desc;
+        }
+
+        function renderQuickInsights(insights) {
+            const container = document.getElementById('quick-insights');
+            container.innerHTML = insights.map(i => `
+                <div class="flex items-start gap-3 text-sm">
+                    <div class="mt-0.5"><i class="fa-solid ${i.icon} text-amber-400 w-4"></i></div>
+                    <div class="text-zinc-300">${i.text}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderPublishingCharts(schedule) {
+            if (!schedule) return;
+
+            // Weekday chart
+            if (weekdayChart) weekdayChart.destroy();
+            const wdCtx = document.getElementById('weekday-chart');
+            const dayLabels = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+            
+            weekdayChart = new Chart(wdCtx, {
+                type: 'bar',
+                data: {
+                    labels: dayLabels,
+                    datasets: [{
+                        label: 'Видео',
+                        data: schedule.weekdays,
+                        backgroundColor: '#FF0033',
+                        borderRadius: 5,
+                        barThickness: 18
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: '#27272a' }, ticks: { color: '#71717a', font: {size: 11} } },
+                        y: { grid: { color: '#27272a' }, ticks: { color: '#71717a', precision: 0, stepSize: 1, font: {size: 10} } }
+                    }
+                }
+            });
+
+            // Hourly
+            if (hourlyChart) hourlyChart.destroy();
+            const hrCtx = document.getElementById('hourly-chart');
+            const hourLabels = Array.from({length: 24}, (_, i) => i % 3 === 0 ? i + 'h' : '');
+            
+            hourlyChart = new Chart(hrCtx, {
+                type: 'line',
+                data: {
+                    labels: hourLabels,
+                    datasets: [{
+                        data: schedule.hours,
+                        borderColor: '#a1a1aa',
+                        borderWidth: 2.5,
+                        fill: true,
+                        backgroundColor: 'rgba(161,161,170,0.15)',
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: '#27272a' }, ticks: { color: '#52525b', font: {size: 9}, maxRotation: 0 } },
+                        y: { display: false, grid: { color: '#27272a' } }
+                    }
+                }
+            });
+
+            // Text insights
+            document.getElementById('schedule-insight').textContent = schedule.insight;
+            document.getElementById('avg-per-week').textContent = schedule.avgPerWeek;
+            document.getElementById('regularity-score').textContent = schedule.regularityScore;
+            document.getElementById('best-day').textContent = schedule.bestDay;
+            document.getElementById('best-hour').textContent = schedule.bestHour;
+
+            // Calendar mini heatmap
+            renderActivityCalendar(schedule.monthly);
+        }
+
+        function renderActivityCalendar(monthly) {
+            const container = document.getElementById('activity-calendar');
+            container.innerHTML = '';
+            
+            const entries = Object.entries(monthly).sort().slice(-12);
+            const max = Math.max(...Object.values(monthly), 1);
+            
+            entries.forEach(([month, count]) => {
+                const intensity = Math.max(0.15, Math.min(0.95, count / max));
+                const el = document.createElement('div');
+                el.className = `rounded-xl px-3 py-2.5 border border-white/10 text-center transition-all`;
+                el.style.background = `rgba(255,0,51,${intensity * 0.55})`;
+                el.innerHTML = `
+                    <div class="text-[10px] font-mono text-white/60">${month}</div>
+                    <div class="text-xl font-semibold tabular-nums mt-px">${count}</div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function renderVideosTable(videos) {
+            currentVideos = videos;
+            const tbody = document.getElementById('videos-tbody');
+            tbody.innerHTML = '';
+            document.getElementById('videos-count').textContent = `(${videos.length})`;
+
+            videos.forEach((video, idx) => {
+                const row = document.createElement('tr');
+                row.className = `table-row border-b border-white/5 last:border-0`;
+                
+                const eng = calculateEngagement(video);
+                const pubDate = new Date(video.publishedAt);
+                
+                row.innerHTML = `
+                    <td class="px-5 py-3.5">
+                        <div class="flex gap-4 items-start">
+                            <div class="w-28 rounded-xl overflow-hidden flex-shrink-0 border border-white/10 shadow">
+                                <img src="${video.thumbnail}" class="w-full aspect-video object-cover" alt="">
+                            </div>
+                            <div class="min-w-0 flex-1 pt-0.5">
+                                <a href="https://youtu.be/${video.id}" target="_blank" class="font-medium leading-tight hover:text-[#FF0033] transition line-clamp-2">${video.title}</a>
+                                <div class="flex items-center gap-2 mt-1.5">
+                                    ${video.duration ? `<span class="pill bg-zinc-800 text-white/70 font-mono text-[10px] px-1.5">${formatDuration(video.duration)}</span>` : ''}
+                                    ${video.defaultLanguage ? `<span class="text-[10px] px-1.5 py-px text-white/50">${video.defaultLanguage.toUpperCase()}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-3 py-3.5 text-right text-xs text-zinc-400 tabular-nums">
+                        ${pubDate.toLocaleDateString('ru-RU', {day:'numeric', month:'short'})}<br>
+                        <span class="text-[10px] opacity-60">${pubDate.getFullYear()}</span>
+                    </td>
+                    <td class="px-3 py-3.5 text-right font-medium tabular-nums">${formatNumber(video.viewCount)}</td>
+                    <td class="px-3 py-3.5 text-right text-emerald-400 tabular-nums">${formatNumber(video.likeCount)}</td>
+                    <td class="px-3 py-3.5 text-right text-amber-300 tabular-nums">${formatNumber(video.commentCount)}</td>
+                    <td class="px-4 py-3.5">
+                        <div class="flex justify-end">
+                            <div class="inline-block text-center">
+                                <div class="text-xs font-semibold tabular-nums">${eng.toFixed(1)}%</div>
+                                <div class="h-px w-8 bg-white/10 my-px mx-auto"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-3 py-3.5 text-center">
+                        <button onclick="showVideoDetails(${idx})" class="w-8 h-8 flex items-center justify-center text-white/50 hover:text-white hover:bg-zinc-800 rounded-xl transition">
+                            <i class="fa-solid fa-info-circle"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterVideosTable() {
+            const term = document.getElementById('video-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#videos-tbody tr');
+            
+            rows.forEach(row => {
+                const title = row.querySelector('a').textContent.toLowerCase();
+                row.style.display = title.includes(term) ? '' : 'none';
+            });
+        }
+
+        function sortVideosTable() {
+            const mode = document.getElementById('video-sort').value;
+            let sorted = [...currentVideos];
+            
+            if (mode === 'date-desc') sorted.sort((a,b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+            else if (mode === 'date-asc') sorted.sort((a,b) => new Date(a.publishedAt) - new Date(b.publishedAt));
+            else if (mode === 'views-desc') sorted.sort((a,b) => (b.viewCount||0) - (a.viewCount||0));
+            else if (mode === 'likes-desc') sorted.sort((a,b) => (b.likeCount||0) - (a.likeCount||0));
+            else if (mode === 'comments-desc') sorted.sort((a,b) => (b.commentCount||0) - (a.commentCount||0));
+            else if (mode === 'engagement-desc') sorted.sort((a,b) => calculateEngagement(b) - calculateEngagement(a));
+            
+            renderVideosTable(sorted);
+        }
+
+        function showVideoDetails(index) {
+            const v = currentVideos[index];
+            const eng = calculateEngagement(v);
+            
+            const modal = document.createElement('div');
+            modal.className = `fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[70] p-5`;
+            modal.innerHTML = `
+                <div onclick="event.target.remove()" class="absolute inset-0"></div>
+                <div onclick="event.stopImmediatePropagation()" class="relative bg-zinc-900 border border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden">
+                    <div class="flex gap-5 p-6">
+                        <div class="w-2/5">
+                            <div class="rounded-2xl overflow-hidden border border-white/10 shadow-xl">
+                                <img src="${v.thumbnail}" class="w-full" />
+                            </div>
+                            <a href="https://youtu.be/${v.id}" target="_blank" 
+                               class="mt-3 flex items-center justify-center gap-x-2 text-sm font-semibold bg-[#FF0033] hover:bg-red-600 transition text-white py-2.5 rounded-2xl">
+                                <i class="fa-brands fa-youtube"></i> 
+                                <span>Смотреть на YouTube</span>
+                            </a>
+                        </div>
+                        <div class="flex-1 pt-1 pr-1">
+                            <div class="font-semibold text-xl leading-tight">${v.title}</div>
+                            
+                            <div class="flex items-center gap-x-4 mt-5 text-sm">
+                                <div><span class="text-zinc-400">Дата:</span> <span class="font-medium">${new Date(v.publishedAt).toLocaleDateString('ru-RU')}</span></div>
+                                <div><span class="text-zinc-400">Длительность:</span> <span class="font-medium">${formatDuration(v.duration) || '—'}</span></div>
+                            </div>
+                            
+                            <div class="grid grid-cols-3 gap-3 mt-5">
+                                <div class="bg-zinc-800/70 rounded-2xl p-3">
+                                    <div class="text-xs text-zinc-400">Просмотры</div>
+                                    <div class="font-semibold text-2xl mt-px">${formatNumber(v.viewCount)}</div>
+                                </div>
+                                <div class="bg-zinc-800/70 rounded-2xl p-3">
+                                    <div class="text-xs text-zinc-400">Лайки</div>
+                                    <div class="font-semibold text-2xl mt-px text-emerald-400">${formatNumber(v.likeCount)}</div>
+                                </div>
+                                <div class="bg-zinc-800/70 rounded-2xl p-3">
+                                    <div class="text-xs text-zinc-400">Комментарии</div>
+                                    <div class="font-semibold text-2xl mt-px text-amber-400">${formatNumber(v.commentCount)}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <div class="text-xs uppercase text-zinc-400">Вовлеченность</div>
+                                <div class="text-4xl font-semibold tracking-tighter text-white">${eng.toFixed(2)}<span class="text-base align-super font-normal text-zinc-400">%</span></div>
+                            </div>
+                            
+                            ${v.tags && v.tags.length ? `
+                            <div class="mt-5">
+                                <div class="uppercase text-xs text-zinc-400 mb-1.5">Теги</div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    ${v.tags.slice(0, 6).map(t => `<span class="text-xs bg-zinc-800 text-white/70 px-2.5 rounded-full py-px">${t}</span>`).join('')}
+                                </div>
+                            </div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function renderPlaylists(playlists) {
+            currentPlaylists = playlists;
+            const grid = document.getElementById('playlists-grid');
+            grid.innerHTML = '';
+            document.getElementById('playlists-count').textContent = `${playlists.length} шт.`;
+
+            if (!playlists.length) {
+                grid.innerHTML = `<div class="col-span-full text-sm text-zinc-400 px-3 py-4">У канала нет публичных плейлистов</div>`;
+                return;
+            }
+
+            playlists.forEach(async (pl, idx) => {
+                const card = document.createElement('div');
+                card.className = `bg-zinc-900 border border-white/10 rounded-3xl p-5 video-card cursor-pointer`;
+                
+                const videoCount = pl.contentDetails?.itemCount || 0;
+                const created = new Date(pl.snippet.publishedAt);
+                
+                card.innerHTML = `
+                    <div class="flex justify-between">
+                        <div>
+                            <div class="font-semibold line-clamp-2 leading-tight pr-2">${pl.snippet.title}</div>
+                            <div class="text-xs text-emerald-400 mt-1 font-medium">${videoCount} видео</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-white/30 mt-1"></i>
+                    </div>
+                    <div class="text-xs text-zinc-400 mt-5 flex items-center justify-between">
+                        <span>Создан ${created.toLocaleDateString('ru-RU', {month:'short', year:'numeric'})}</span>
+                    </div>
+                `;
+                
+                card.onclick = () => showPlaylistModal(pl, idx);
+                grid.appendChild(card);
+            });
+        }
+
+        async function showPlaylistModal(playlist, index) {
+            const modal = document.createElement('div');
+            modal.className = `fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-5`;
+            
+            modal.innerHTML = `
+                <div onclick="event.target.remove()" class="absolute inset-0"></div>
+                <div onclick="event.stopImmediatePropagation()" class="relative bg-zinc-900 border border-white/10 w-full max-w-3xl rounded-3xl overflow-hidden">
+                    <div class="px-6 pt-6 pb-4 border-b border-white/10 flex items-center">
+                        <div class="flex-1">
+                            <div class="font-semibold text-2xl">${playlist.snippet.title}</div>
+                            <div class="text-sm text-zinc-400">${playlist.contentDetails?.itemCount || 0} видео</div>
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" class="text-3xl text-white/40 hover:text-white">×</button>
+                    </div>
+                    <div class="p-6 max-h-[460px] overflow-auto custom-scroll" id="playlist-videos-${index}">
+                        <div class="flex items-center justify-center h-36">
+                            <i class="fa-solid fa-spinner fa-spin text-xl text-white/60"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            try {
+                const items = await fetchPlaylistVideos(playlist.id, 40);
+                const container = document.getElementById(`playlist-videos-${index}`);
+                
+                if (!items.length) {
+                    container.innerHTML = `<div class="text-zinc-400">Плейлист пуст</div>`;
+                    return;
+                }
+                
+                container.innerHTML = items.map(item => `
+                    <a href="https://youtu.be/${item.contentDetails.videoId}" target="_blank" 
+                       class="flex gap-4 items-center py-[9px] px-1 hover:bg-white/5 rounded-2xl group transition">
+                        <div class="w-24 rounded-lg overflow-hidden flex-shrink-0">
+                            <img src="${item.snippet.thumbnails?.default?.url}" class="w-full aspect-video object-cover" />
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-sm line-clamp-2 group-hover:text-[#FF0033] transition">${item.snippet.title}</div>
+                            <div class="text-xs text-zinc-400 mt-px">${new Date(item.snippet.publishedAt).toLocaleDateString('ru-RU')}</div>
+                        </div>
+                    </a>
+                `).join('');
+            } catch (e) {
+                document.getElementById(`playlist-videos-${index}`).innerHTML = `<div class="text-red-400">Не удалось загрузить видео плейлиста</div>`;
+            }
+        }
+
+        function showTopVideos(mode = 'views') {
+            // Deactivate all buttons
+            document.querySelectorAll('.top-filter-btn').forEach(b => b.classList.remove('active', 'bg-white/10'));
+            document.querySelectorAll('.top-filter-btn').forEach(b => {
+                if (b.dataset.filter === mode) b.classList.add('active', 'bg-white/10');
+            });
+
+            const tops = analyzeTopVideos(currentVideos);
+            let list = [];
+            
+            if (mode === 'views') list = tops.byViews;
+            else if (mode === 'engagement') list = tops.byEngagement;
+            else if (mode === 'likes') list = tops.byLikes;
+
+            const grid = document.getElementById('top-videos-grid');
+            grid.innerHTML = '';
+
+            list.forEach(v => {
+                const div = document.createElement('div');
+                div.className = `video-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden cursor-pointer`;
+                div.onclick = () => window.open(`https://youtu.be/${v.id}`, '_blank');
+                
+                const eng = v.engagement || calculateEngagement(v);
+                
+                div.innerHTML = `
+                    <div class="relative yt-thumbnail" style="background-image: url('${v.thumbnail}')">
+                        <div class="play-overlay"><i class="fa-solid fa-play text-white ml-0.5"></i></div>
+                        <div class="absolute top-2.5 right-2.5 bg-black/70 text-white text-xs px-2 py-px font-mono rounded">${formatDuration(v.duration)}</div>
+                    </div>
+                    <div class="p-4">
+                        <div class="text-sm font-medium line-clamp-2 min-h-[2.6em]">${v.title}</div>
+                        
+                        <div class="mt-3 flex items-baseline justify-between text-xs">
+                            <div class="flex items-center gap-x-3">
+                                <div><span class="font-semibold text-lg tabular-nums">${formatNumber(v.viewCount)}</span> <span class="text-[10px] text-zinc-400">просм.</span></div>
+                            </div>
+                            <div class="text-right">
+                                <span class="font-semibold text-emerald-400">${eng.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        function renderKeywordsAnalysis(keywords) {
+            // Title words
+            const titleContainer = document.getElementById('title-words');
+            titleContainer.innerHTML = '';
+            
+            keywords.titleWords.forEach(([word, count]) => {
+                const size = Math.max(12, Math.min(17, 11 + count * 0.9));
+                const el = document.createElement('div');
+                el.className = `word-tag px-3.5 py-[5px] text-sm bg-zinc-800 rounded-2xl cursor-default border border-white/5`;
+                el.style.fontSize = size + 'px';
+                el.innerHTML = `${word} <span class="opacity-50 font-mono text-xs align-baseline">×${count}</span>`;
+                titleContainer.appendChild(el);
+            });
+
+            document.getElementById('avg-title-length').textContent = keywords.avgTitleLength;
+
+            // Tags
+            const tagsContainer = document.getElementById('popular-tags');
+            tagsContainer.innerHTML = '';
+            
+            keywords.tags.forEach(([tag, count]) => {
+                const el = document.createElement('div');
+                el.className = `word-tag px-3 py-1 text-xs bg-violet-900/30 hover:bg-violet-900/60 border border-violet-400/20 text-violet-200 rounded-[14px]`;
+                el.innerHTML = `${tag} <span class="font-mono opacity-50">×${count}</span>`;
+                tagsContainer.appendChild(el);
+            });
+
+            document.getElementById('timestamp-percent').textContent = keywords.timestampPercent + '%';
+            document.getElementById('links-percent').textContent = keywords.linksPercent + '%';
+        }
+
+        // ==================== COMPARISON ====================
+        function addCurrentToComparison() {
+            if (!currentChannel) return;
+            
+            if (comparisonChannels.findIndex(c => c.id === currentChannel.id) !== -1) {
+                showToast('Канал уже добавлен в сравнение');
+                return;
+            }
+            
+            comparisonChannels.push(currentChannel);
+            updateComparisonUI();
+            showToast('Канал добавлен к сравнению');
+            scrollToSection('compare');
+        }
+
+        async function searchAndAddToCompare() {
+            const input = document.getElementById('compare-search-input').value.trim();
+            if (!input) return;
+            
+            const container = document.getElementById('compare-search-results');
+            container.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
+            
+            try {
+                const channels = await searchChannelsAPI(input);
+                container.innerHTML = '';
+                
+                if (!channels.length) {
+                    container.innerHTML = `<div class="text-sm px-4 text-zinc-400">Ничего не найдено</div>`;
+                    return;
+                }
+                
+                channels.slice(0,4).forEach(ch => {
+                    const item = document.createElement('div');
+                    item.className = `px-4 py-[13px] flex items-center gap-3 hover:bg-white/5 cursor-pointer rounded-2xl`;
+                    item.innerHTML = `
+                        <img src="${ch.snippet.thumbnails?.default?.url}" class="w-9 h-9 rounded-xl object-cover" />
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium text-sm">${ch.snippet.title}</div>
+                            <div class="text-xs text-zinc-400">${formatNumber(ch.statistics?.subscriberCount)} подписчиков</div>
+                        </div>
+                    `;
+                    item.onclick = () => {
+                        hideAddChannelModal();
+                        if (!comparisonChannels.find(c => c.id === ch.id)) {
+                            comparisonChannels.push(ch);
+                            updateComparisonUI();
+                        }
+                    };
+                    container.appendChild(item);
+                });
+            } catch (err) {
+                container.innerHTML = `<div class="text-red-400 px-3 py-2 text-sm">${err.message}</div>`;
+            }
+        }
+
+        function updateComparisonUI() {
+            const empty = document.getElementById('comparison-empty');
+            const content = document.getElementById('comparison-content');
+            
+            if (comparisonChannels.length < 1) {
+                empty.classList.remove('hidden');
+                content.classList.add('hidden');
+                return;
+            }
+            
+            empty.classList.add('hidden');
+            content.classList.remove('hidden');
+
+            // Headers
+            for (let i = 0; i < 3; i++) {
+                const h = document.getElementById(`compare-header-${i+1}`);
+                if (comparisonChannels[i]) {
+                    h.innerHTML = `<div class="flex items-center justify-end gap-x-2"><img src="${comparisonChannels[i].snippet.thumbnails?.default?.url}" class="w-5 h-5 rounded" /> <span class="truncate max-w-[110px]">${comparisonChannels[i].snippet.title}</span></div>`;
+                    h.classList.remove('hidden');
+                } else {
+                    h.innerHTML = '';
+                    h.classList.add('hidden');
+                }
+            }
+
+            // Metrics rows
+            const tbody = document.getElementById('comparison-tbody');
+            tbody.innerHTML = '';
+
+            const metrics = [
+                { label: 'Подписчики', key: 'subscriberCount', fmt: formatNumber },
+                { label: 'Всего видео', key: 'videoCount', fmt: formatNumber },
+                { label: 'Просмотры (всего)', key: 'viewCount', fmt: formatNumber }
+            ];
+
+            metrics.forEach(m => {
+                const row = document.createElement('tr');
+                let cells = `<td class="py-3 text-zinc-400">${m.label}</td>`;
+                
+                comparisonChannels.forEach((ch, idx) => {
+                    const val = ch.statistics?.[m.key] || 0;
+                    cells += `<td class="px-4 py-3 text-right font-semibold tabular-nums">${m.fmt(val)}</td>`;
+                });
+                // Fill empty cells
+                for (let i = comparisonChannels.length; i < 3; i++) cells += `<td class="px-4"></td>`;
+                row.innerHTML = cells;
+                tbody.appendChild(row);
+            });
+
+            // Visual comparison
+            const visuals = document.getElementById('compare-visuals');
+            visuals.innerHTML = '';
+
+            const maxSubs = Math.max(...comparisonChannels.map(c => parseInt(c.statistics?.subscriberCount || 0)));
+            
+            comparisonChannels.forEach((ch, idx) => {
+                const subs = parseInt(ch.statistics?.subscriberCount || 0);
+                const pct = maxSubs ? Math.round((subs / maxSubs) * 100) : 50;
+                
+                const block = document.createElement('div');
+                block.className = `flex gap-3 items-center`;
+                block.innerHTML = `
+                    <div class="w-8 flex-shrink-0">
+                        <img src="${ch.snippet.thumbnails?.default?.url}" class="w-7 h-7 rounded-full" />
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm mb-1.5">${ch.snippet.title}</div>
+                        <div class="h-2.5 bg-white/10 rounded-full overflow-hidden">
+                            <div class="h-2.5 bg-gradient-to-r from-[#FF0033] to-rose-400 rounded-full transition-all" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                    <div class="font-semibold w-16 text-right text-sm tabular-nums">${formatNumber(subs)}</div>
+                `;
+                visuals.appendChild(block);
+            });
+        }
+
+        function clearComparison() {
+            comparisonChannels = [];
+            document.getElementById('comparison-empty').classList.remove('hidden');
+            document.getElementById('comparison-content').classList.add('hidden');
+        }
+
+        function showAddChannelModal() {
+            const modal = document.getElementById('add-compare-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('compare-search-input').focus();
+            document.getElementById('compare-search-results').innerHTML = '';
+        }
+
+        function hideAddChannelModal() {
+            const modal = document.getElementById('add-compare-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        // ==================== MAIN FLOW ====================
+        async function searchChannels() {
+            const input = document.getElementById('channel-input').value.trim();
+            if (!input) {
+                showToast('Введите название канала или ссылку', 'error');
+                return;
+            }
+            
+            const resultsSection = document.getElementById('results-section');
+            const searchSection = document.getElementById('search-section');
+            
+            searchSection.style.opacity = '0.3';
+            showLoadingOverlay(true);
+
+            try {
+                const channels = await searchChannelsAPI(input);
+                
+                if (!channels.length) {
+                    throw new Error('Каналы не найдены. Проверьте запрос и API ключ.');
+                }
+                
+                if (channels.length === 1) {
+                    await analyzeChannel(channels[0]);
+                } else {
+                    showChannelSelectionModal(channels);
+                }
+            } catch (error) {
+                console.error(error);
+                showToast(error.message || 'Ошибка при поиске канала', 'error');
+                searchSection.style.opacity = '1';
+            } finally {
+                showLoadingOverlay(false);
+            }
+        }
+
+        function showChannelSelectionModal(channels) {
+            const modal = document.getElementById('channel-select-modal');
+            const container = document.getElementById('channel-options');
+            container.innerHTML = '';
+            
+            channels.forEach(ch => {
+                const div = document.createElement('div');
+                div.className = `px-4 py-3 flex gap-3 cursor-pointer hover:bg-white/5 border-b border-white/10 last:border-none`;
+                
+                div.innerHTML = `
+                    <img src="${ch.snippet.thumbnails?.default?.url}" class="w-12 h-12 rounded-2xl object-cover flex-shrink-0 border border-white/10" />
+                    <div class="min-w-0 flex-1">
+                        <div class="font-semibold">${ch.snippet.title}</div>
+                        <div class="text-xs flex items-center gap-x-2 text-zinc-400">
+                            <span>${formatNumber(ch.statistics?.subscriberCount || 0)} подписчиков</span>
+                            <span class="text-[10px]">•</span>
+                            <span>${ch.statistics?.videoCount || 0} видео</span>
+                        </div>
+                    </div>
+                `;
+                
+                div.onclick = async () => {
+                    hideChannelModal();
+                    await analyzeChannel(ch);
+                };
+                container.appendChild(div);
+            });
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function hideChannelModal() {
+            const modal = document.getElementById('channel-select-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        let currentSchedule = null;
+        let currentKeywords = null;
+
+        async function analyzeChannel(channel) {
+            const searchSection = document.getElementById('search-section');
+            const resultsSection = document.getElementById('results-section');
+            
+            currentChannel = channel;
+            searchSection.style.display = 'none';
+            resultsSection.classList.remove('hidden');
+            document.getElementById('floating-actions').classList.remove('hidden');
+            
+            // Render basic header immediately
+            renderChannelHeader(channel);
+            document.getElementById('quick-insights').innerHTML = `<div class="text-sm text-zinc-400">Загружаем данные и проводим анализ...</div>`;
+            
+            showLoadingOverlay(true, 'Загружаем видео и проводим глубокий анализ...');
+
+            try {
+                // 1. Get uploads playlist
+                const uploadsId = channel.contentDetails?.relatedPlaylists?.uploads;
+                if (!uploadsId) throw new Error('Не удалось получить плейлист загрузок канала');
+                
+                // 2. Fetch videos
+                const videos = await fetchChannelVideos(uploadsId, 130);
+                
+                // 3. Fetch playlists
+                const playlists = await fetchPlaylists(channel.id);
+                
+                // 4. Analysis
+                currentSchedule = analyzePublishingSchedule(videos);
+                const topVideosData = analyzeTopVideos(videos);
+                currentKeywords = analyzeKeywords(videos);
+                const quickInsights = generateQuickInsights(channel, videos, currentSchedule);
+
+                // 5. Render everything
+                renderQuickInsights(quickInsights);
+                renderPublishingCharts(currentSchedule);
+                renderVideosTable(videos);
+                renderPlaylists(playlists);
+                renderKeywordsAnalysis(currentKeywords);
+                
+                // Default top videos
+                showTopVideos('views');
+                
+                // Reset comparison visuals if needed
+                if (comparisonChannels.length) updateComparisonUI();
+                
+                // Scroll to top of results
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                showToast(`Анализ завершён. Изучено ${videos.length} видео`);
+                
+            } catch (err) {
+                console.error(err);
+                showToast(err.message || 'Произошла ошибка при анализе', 'error');
+                
+                // Show minimal info anyway
+                document.getElementById('quick-insights').innerHTML = `<div class="text-red-400 text-sm">Не удалось загрузить полные данные. Проверьте ключ API.</div>`;
+            } finally {
+                showLoadingOverlay(false);
+            }
+        }
+
+        async function quickAnalyze(query) {
+            document.getElementById('channel-input').value = query;
+            await searchChannels();
+        }
+
+        function refreshAnalysis() {
+            if (currentChannel) {
+                analyzeChannel(currentChannel);
+            }
+        }
+
+        function scrollToSection(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // Highlight active
+            document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+            const activeLink = document.querySelector(`.nav-link[data-section="${id}"]`);
+            if (activeLink) activeLink.classList.add('active');
+            
+            setTimeout(() => {
+                if (activeLink) activeLink.classList.remove('active');
+            }, 1400);
+        }
+
+        function showLoadingOverlay(show, text = '') {
+            let loader = document.getElementById('global-loader');
+            
+            if (show) {
+                if (!loader) {
+                    loader = document.createElement('div');
+                    loader.id = 'global-loader';
+                    loader.className = `fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm`;
+                    loader.innerHTML = `
+                        <div class="text-center">
+                            <div class="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FF0033] to-red-700 flex items-center justify-center mb-4 shadow">
+                                <i class="fa-solid fa-chart-line text-white text-4xl"></i>
+                            </div>
+                            <div class="font-semibold text-lg tracking-tight">TubeScope анализирует канал</div>
+                            <div id="loader-text" class="text-sm text-zinc-400 mt-1 max-w-[260px]">${text || 'Получение данных через YouTube API...'}</div>
+                            
+                            <div class="mt-6 w-48 mx-auto h-px bg-white/10 rounded overflow-hidden">
+                                <div class="loading-bar h-px bg-white/70" style="width: 35%"></div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(loader);
+                } else {
+                    loader.classList.remove('hidden');
+                    loader.style.display = 'flex';
+                    if (text) document.getElementById('loader-text').textContent = text;
+                }
+            } else if (loader) {
+                loader.style.transition = 'opacity .2s';
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    if (loader.parentNode) loader.parentNode.removeChild(loader);
+                }, 220);
+            }
+        }
+
+        // ==================== EXPORTS ====================
+        function prepareExportData() {
+            return {
+                channel: currentChannel,
+                videos: currentVideos,
+                schedule: currentSchedule,
+                keywords: currentKeywords,
+                playlists: currentPlaylists,
+                exportedAt: new Date().toISOString()
+            };
+        }
+
+        function exportCSV() {
+            if (!currentVideos.length) return showToast('Нет данных для экспорта', 'error');
+            
+            const headers = ['Title','Video URL','Published','Views','Likes','Comments','Engagement %','Duration'];
+            const rows = currentVideos.map(v => [
+                `"${(v.title || '').replace(/"/g,'""')}"`,
+                `https://youtu.be/${v.id}`,
+                v.publishedAt,
+                v.viewCount || 0,
+                v.likeCount || 0,
+                v.commentCount || 0,
+                calculateEngagement(v).toFixed(2),
+                formatDuration(v.duration) || ''
+            ]);
+            
+            let csv = headers.join(',') + '\n' + rows.map(r => r.join(',')).join('\n');
+            
+            const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentChannel.snippet.title.replace(/[^a-z0-9]/gi,'_')}_videos.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('CSV экспортирован');
+        }
+
+        function exportExcel() {
+            if (!currentChannel) return;
+            
+            const wb = XLSX.utils.book_new();
+            
+            // Channel sheet
+            const channelData = [
+                ['Канал', currentChannel.snippet.title],
+                ['Подписчики', currentChannel.statistics.subscriberCount],
+                ['Видео', currentChannel.statistics.videoCount],
+                ['Просмотры', currentChannel.statistics.viewCount],
+                ['Создан', currentChannel.snippet.publishedAt]
+            ];
+            const ws1 = XLSX.utils.aoa_to_sheet(channelData);
+            XLSX.utils.book_append_sheet(wb, ws1, 'Канал');
+            
+            // Videos sheet
+            if (currentVideos.length) {
+                const videoRows = [['Название', 'Дата', 'Просмотры', 'Лайки', 'Комментарии', 'Вовлеченность', 'Ссылка']];
+                currentVideos.forEach(v => videoRows.push([
+                    v.title, v.publishedAt, v.viewCount, v.likeCount, v.commentCount,
+                    calculateEngagement(v).toFixed(2), `https://youtu.be/${v.id}`
+                ]));
+                const ws2 = XLSX.utils.aoa_to_sheet(videoRows);
+                XLSX.utils.book_append_sheet(wb, ws2, 'Видео');
+            }
+            
+            // Schedule
+            if (currentSchedule) {
+                const sched = [['Метрика', 'Значение'], ['Среднее видео/нед', currentSchedule.avgPerWeek], ['Лучший день', currentSchedule.bestDay]];
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sched), 'Расписание');
+            }
+            
+            XLSX.writeFile(wb, `TubeScope_${currentChannel.snippet.title.slice(0,30)}.xlsx`);
+            showToast('Excel файл сохранён');
+        }
+
+        function exportPDF() {
+            if (!currentChannel) return;
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const title = currentChannel.snippet.title;
+            
+            doc.setFillColor(24, 24, 27);
+            doc.rect(0, 0, 210, 297, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.text('TubeScope • Отчёт', 20, 22);
+            
+            doc.setFontSize(14);
+            doc.text(title, 20, 33);
+            
+            doc.setFontSize(11);
+            doc.text(`Дата анализа: ${new Date().toLocaleDateString('ru-RU')}`, 20, 42);
+            
+            // Channel info
+            doc.setFontSize(13);
+            doc.text('Статистика канала', 20, 58);
+            doc.setFontSize(11);
+            doc.text(`Подписчики: ${formatNumber(currentChannel.statistics.subscriberCount)}`, 24, 67);
+            doc.text(`Видео: ${currentChannel.statistics.videoCount}`, 24, 74);
+            doc.text(`Всего просмотров: ${formatNumber(currentChannel.statistics.viewCount)}`, 24, 81);
+            
+            if (currentSchedule) {
+                doc.text('Анализ публикаций', 20, 97);
+                doc.setFontSize(11);
+                doc.text(`Средняя частота: ${currentSchedule.avgPerWeek} видео/нед`, 24, 106);
+                doc.text(`Лучший день: ${currentSchedule.bestDay}`, 24, 113);
+                doc.text(`Регулярность: ${currentSchedule.regularityScore}/100`, 24, 120);
+            }
+            
+            // Top 5 videos
+            doc.setFontSize(13);
+            doc.text('Топ-5 видео по просмотрам', 20, 138);
+            doc.setFontSize(10);
+            
+            const top5 = [...currentVideos].sort((a,b) => (b.viewCount||0)-(a.viewCount||0)).slice(0,5);
+            let y = 148;
+            top5.forEach((v, i) => {
+                doc.text(`${i+1}. ${v.title.substring(0, 70)}`, 24, y);
+                doc.text(`${formatNumber(v.viewCount)} просмотров`, 160, y);
+                y += 7.5;
+            });
+            
+            doc.setFontSize(9);
+            doc.setTextColor(160, 160, 160);
+            doc.text('Сгенерировано TubeScope • youtube-competitor-intel', 20, 285);
+            
+            doc.save(`TubeScope_${title.slice(0,35)}.pdf`);
+            showToast('PDF отчёт создан');
+        }
+
+        function exportJSON() {
+            if (!currentChannel) return;
+            
+            const data = prepareExportData();
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tubescope_${currentChannel.id}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('JSON экспортирован');
+        }
+
+        function exportCurrentVideos() {
+            if (!currentVideos.length) return;
+            // Reuse CSV for selected table
+            exportCSV();
+        }
+
+        // ==================== INIT ====================
+        function initApp() {
+            initTailwind();
+            updateApiKeyStatus();
+            
+            // Keyboard shortcut
+            document.addEventListener('keydown', function(e) {
+                if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+                    e.preventDefault();
+                    document.getElementById('channel-input').focus();
+                }
+            });
+            
+            // Preload demo hint
+            setTimeout(() => {
+                const input = document.getElementById('channel-input');
+                if (input && !currentChannel) {
+                    input.placeholder = "Например: MrBeast или https://youtube.com/@mkbhd";
+                }
+            }, 800);
+            
+            // Welcome toast
+            setTimeout(() => {
+                if (!currentChannel) {
+                    // showToast('Введите название канала для начала анализа');
+                }
+            }, 1700);
+            
+            // Make nav links nicer
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                    setTimeout(() => link.classList.remove('active'), 900);
+                });
+            });
+            
+            // Allow Enter anywhere in search area
+            console.log('%c[TubeScope] Beautiful YouTube Competitor Analyzer initialized', 'color:#52525b');
+            
+            // Optional: auto analyze a popular channel for instant wow (disabled by default)
+            // quickAnalyze('TED');
+        }
+
+        // Boot
+        window.onload = initApp;
+        
+        // Global helpers for console debug if needed
+        window.TubeScope = { analyzeChannel: (q) => quickAnalyze(q) };
+    </script>
+</body>
+</html>
